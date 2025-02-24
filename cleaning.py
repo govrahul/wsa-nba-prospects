@@ -24,3 +24,7 @@ for player in lebrons_ordered['Player']:
     if player not in college_stats_best_year['Player'].values:
         lebrons_ordered = lebrons_ordered[lebrons_ordered['Player'] != player]
 
+# Keep players in college_stats who have LEBRON stats
+for player in college_stats_best_year['Player']:
+    if player not in lebrons_ordered['Player'].values:
+        college_stats_best_year = college_stats_best_year[college_stats_best_year['Player'] != player]
