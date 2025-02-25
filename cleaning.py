@@ -28,3 +28,8 @@ for player in lebrons_ordered['Player']:
 for player in college_stats_best_year['Player']:
     if player not in lebrons_ordered['Player'].values:
         college_stats_best_year = college_stats_best_year[college_stats_best_year['Player'] != player]
+
+# Merge dfs to have each players' mean LEBRON WAR with their college stats, easier for modeling
+mean_lebron = lebrons_ordered.groupby('Player')['LEBRON WAR'].mean().reset_index()
+mean_lebron.columns = ['Player', 'Mean LEBRON WAR']
+merged = pd.merge(college_stats_best_year, mean_lebron, on='Player', how='inner')
