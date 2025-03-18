@@ -33,3 +33,8 @@ for player in college_stats_best_year['Player']:
 mean_lebron = lebrons_ordered.groupby('Player')['LEBRON WAR'].mean().reset_index()
 mean_lebron.columns = ['Player', 'Mean LEBRON WAR']
 merged = pd.merge(college_stats_best_year, mean_lebron, on='Player', how='inner')
+merged['Totals_3P%'] = merged['Totals_3P%'].fillna(0)
+merged.iloc[256, -3] = 21
+merged.iloc[317,-3] = 20
+
+merged.to_csv("lebron_draft_data.csv", index=False)
