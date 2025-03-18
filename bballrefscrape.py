@@ -29,10 +29,13 @@ def get_player_url(link):
     """Format player URL based on their name."""
     nba_response = requests.get('https://www.basketball-reference.com/' + link)
     soup = BeautifulSoup(nba_response.text, 'html.parser')
-    container = soup.find('div', attrs={'id':'all_college_stats_sh'})
+    container = soup.find('div', attrs={'id':'all_all_college_stats'})
+    age = soup.find_all('td', attrs={'data-stat':'age'})
+    if len(age) > 0:
+        age = int(age[0].text) - 1
     if not container:
         return None
-    return container.find('a').get('href')
+    return [container.find('a').get('href'), age]
 
 def get_college_stats(link):
     """Scrape college stats (Totals and Advanced) for a given player."""
@@ -41,7 +44,8 @@ def get_college_stats(link):
         print('college stats not found')
         return None
     
-    response = requests.get(player_url)
+    age = player_url[1]
+    response = requests.get(player_url[0])
     if response.status_code != 200:
         print(response.status_code)
         return None  # Page not found
@@ -59,7 +63,7 @@ def get_college_stats(link):
     if not totals_df.empty and not advanced_df.empty:
         totals_df = totals_df.add_prefix("Totals_")
         advanced_df = advanced_df.add_prefix("Advanced_")
-        combined_df = pd.concat([totals_df, advanced_df], axis=1)
+        combined_df = pd.concat([totals_df, advanced_df, pd.DataFrame({"Age":age})], axis=1)
     elif not totals_df.empty:
         combined_df = totals_df.add_prefix("Totals_")
     elif not advanced_df.empty:
@@ -68,11 +72,12 @@ def get_college_stats(link):
         print('tables empty')
         combined_df = None
     
-    return combined_df
+    agel = [age for i in range(combined_df.shape[0])]
+    return combined_df.assign(age=agel)
 
 def main():
     all_data = []
-    for year in range(2010, 2021):
+    for year in range(2010,2021):
         print(f'Scraping {year} Draft: \n')
         draft_url = f"https://www.basketball-reference.com/draft/NBA_{year}.html"
         players = get_drafted_players(draft_url)
@@ -87,6 +92,7 @@ def main():
             else:
                 print('stats empty')
             time.sleep(5)  # To avoid getting blocked
+            
     
     final_df = pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
     final_df.to_csv("nba_draft_college_stats.csv", index=False)
