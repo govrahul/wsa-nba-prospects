@@ -37,4 +37,8 @@ merged['Totals_3P%'] = merged['Totals_3P%'].fillna(0)
 merged.iloc[256, -3] = 21
 merged.iloc[317,-3] = 20
 
+merged = merged.drop(['Totals_Team', 'Totals_Season', 'Totals_Awards', 'Advanced_Season', 'Advanced_Team', 'Advanced_Conf', 'Advanced_Conf', 'Advanced_Class', 'Advanced_Pos', 'Advanced_G', 'Advanced_GS', 'Advanced_MP', 'Advanced_Awards'], axis=1)
+merged["Power_Conference"] = [s in ['Big Ten', 'SEC', 'Pac-12', 'ACC', 'Big 12', 'Big East'] for s in merged['Totals_Conf']]
+merged = merged[merged['Year'] != 2010]
+
 merged.to_csv("lebron_draft_data.csv", index=False)
