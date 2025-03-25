@@ -1,8 +1,9 @@
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 import pandas as pd
 import time
 import warnings
+import html5lib
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def get_drafted_players(url):
@@ -37,6 +38,9 @@ def get_player_url(link):
         return None
     return [container.find('a').get('href'), age]
 
+def convert_height(s):
+    return int(s[0]) * 12 + int(s[2:])
+
 def get_college_stats(link):
     """Scrape college stats (Totals and Advanced) for a given player."""
     player_url = get_player_url(link)
@@ -49,22 +53,42 @@ def get_college_stats(link):
     if response.status_code != 200:
         print(response.status_code)
         return None  # Page not found
-    
-    player_soup = BeautifulSoup(response.text, 'html.parser')
-    
+
+    player_soup = BeautifulSoup(response.text, 'html5lib')
+    if response.text.find('id="div_players_advanced"') != -1:
+        print("in raw text", response.text.find('id="players_advanced"'))
+    if 'id="players_advanced"' in player_soup.get_text():
+        print("in soup")
+    #for element in player_soup(text=lambda text: isinstance(text, Comment)):
+    #    element.extract()
     # Extract Totals table
     totals_table = player_soup.find('table', attrs={'id':'players_totals'})
     totals_df = pd.read_html(str(totals_table))[0] if totals_table else pd.DataFrame()
     
     # Extract Advanced table
-    advanced_table = player_soup.find('table', attrs={'id':'players_advanced'})
+    raw_html = response.text
+    start = raw_html.find('id="div_players_advanced"') - 53  # Find the start of the first table
+    end = raw_html.find("</table>", start) + 8 # Find the end of the first table
+    advanced_soup = 0
+    if start != -1 and end != -1:
+        table_html = raw_html[start:end]
+        print("Extracted table HTML: ", start, end)
+        advanced_soup = BeautifulSoup(table_html, "html.parser")
+        #print(soup_table.prettify())
+    else:
+        print("Table not found in raw HTML.", start, end)
+
+    advanced_table = advanced_soup.find('table', attrs={'id':'players_advanced'})
+    #print(raw_html[start:start+10000])
     advanced_df = pd.read_html(str(advanced_table))[0] if advanced_table else pd.DataFrame()
-    
+    #print(advanced_df)
+
     if not totals_df.empty and not advanced_df.empty:
         totals_df = totals_df.add_prefix("Totals_")
         advanced_df = advanced_df.add_prefix("Advanced_")
-        combined_df = pd.concat([totals_df, advanced_df, pd.DataFrame({"Age":age})], axis=1)
+        combined_df = pd.concat([totals_df, advanced_df], axis=1)
     elif not totals_df.empty:
+        print('adv empty')
         combined_df = totals_df.add_prefix("Totals_")
     elif not advanced_df.empty:
         combined_df = advanced_df.add_prefix("Advanced_")
@@ -72,8 +96,11 @@ def get_college_stats(link):
         print('tables empty')
         combined_df = None
     
+    height = convert_height(player_soup.find('div', attrs={'id':'info'}).find_all('span')[1].text)
+    print(height)
+    height1 = [height for i in range(combined_df.shape[0])]
     agel = [age for i in range(combined_df.shape[0])]
-    return combined_df.assign(age=agel)
+    return combined_df.assign(age=agel).assign(height=height1)
 
 def main():
     all_data = []
